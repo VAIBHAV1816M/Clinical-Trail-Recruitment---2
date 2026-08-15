@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, DateTime, JSON, CheckConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
-from database.connection import Base
+from backend.database.connection import Base
 
 class ScreeningResult(Base):
     __tablename__ = "screening_results"

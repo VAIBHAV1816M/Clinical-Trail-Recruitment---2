@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, CheckConstraint
 from sqlalchemy.orm import relationship
-from database.connection import Base
+from backend.database.connection import Base
 
 class Enrollment(Base):
     __tablename__ = "enrollments"

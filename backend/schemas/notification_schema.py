@@ -1,6 +1,5 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, Literal
-from datetime import datetime
+from pydantic import BaseModel
+from typing import Literal
 
 class NotificationSend(BaseModel):
     patient_id: str
@@ -9,7 +8,8 @@ class NotificationSend(BaseModel):
     channel: str
 
 class NotificationRespond(BaseModel):
-    response: Literal["ACCEPTED", "DECLINED"]
+    # Strict literal enforcement prevents typo-based database pollution
+    response: Literal["ACCEPTED", "DECLINED", "NONE"]
 
 class NotificationResponse(BaseModel):
     notification_id: int
@@ -17,9 +17,8 @@ class NotificationResponse(BaseModel):
     trial_id: str
     message: str
     channel: str
-    
     delivery_status: str
     response: str
-    sent_at: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

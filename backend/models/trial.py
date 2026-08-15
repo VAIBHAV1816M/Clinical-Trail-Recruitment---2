@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Text, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
-from database.connection import Base
+from backend.database.connection import Base
 
 class Trial(Base):
     __tablename__ = "trials"

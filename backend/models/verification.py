@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
-from database.connection import Base
+from backend.database.connection import Base
 
 class Verification(Base):
     __tablename__ = "verifications"

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
-from database.connection import Base
+from backend.database.connection import Base
 
 class TrialCriterion(Base):
     __tablename__ = "trial_criteria"
