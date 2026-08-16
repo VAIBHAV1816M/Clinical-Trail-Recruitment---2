@@ -18,11 +18,12 @@ from backend.services.matching_service import (
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
 
-@router.get("/patient/{patient_id}/trial/{trial_id}")
+@router.get("/patient/{patient_id}/trial/{trial_id}", response_model=MatchResponse)
 def match_patient_to_trial(patient_id: str, trial_id: str, db: Session = Depends(get_db)):
     """
     On-demand matching (persist=False).
-    Does NOT generate a screening_id. Safe for polling.
+    Does NOT generate a screening_id - response.data.screening_id and
+    response.data.screened_at will be null. Safe for polling.
     """
     try:
         result = screen_patient_for_trial(db, patient_id, trial_id, persist=False)
@@ -31,7 +32,7 @@ def match_patient_to_trial(patient_id: str, trial_id: str, db: Session = Depends
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/screen/")
+@router.post("/screen/", response_model=MatchResponse)
 def persist_screening(req: ScreenRequest, db: Session = Depends(get_db)):
     """
     Persisted screening (persist=True).

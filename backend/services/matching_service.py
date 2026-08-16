@@ -64,6 +64,17 @@ def screen_patient_for_trial(db: Session, patient_id: str, trial_id: str, persis
 
     result = run_matching_engine(patient, trial)
 
+    # BUG FIX (patient_id/trial_id missing from response): run_matching_engine()
+    # is deliberately patient/trial-agnostic in its return shape - it doesn't know
+    # (or need to know) which specific patient/trial it was called with, so it never
+    # includes those keys. That's fine for the engine's own unit tests, but it means
+    # the dict this function returns was missing two REQUIRED fields on
+    # ScreeningResultResponse, and the untyped GET/POST matching routes were the
+    # only reason that went unnoticed (no response_model was validating the shape).
+    # Inject them here, once, so every caller - persisted or not - gets a complete,
+    # schema-valid result without the engine needing to know about IDs at all.
+    result = {**result, "patient_id": patient.patient_id, "trial_id": trial.trial_id}
+
     if persist:
         db_screening = _persist_screening(db, patient.patient_id, trial.trial_id, result)
         db.commit()
