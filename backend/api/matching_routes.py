@@ -9,12 +9,12 @@ from backend.models.patient import Patient
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
-@router.get("/patient/{patient_id}/trial/{trial_id}", response_model=MatchResponse)
+@router.get("/patient/{patient_id}/trial/{trial_id}")
 def match_patient_to_trial(patient_id: str, trial_id: str, db: Session = Depends(get_db)):
     try:
         # A specific targeted lookup GET should not persist a new database row
         result = screen_patient_for_trial(db, patient_id, trial_id, persist=False)
-        return MatchResponse(data=result)
+        return {"data": result}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

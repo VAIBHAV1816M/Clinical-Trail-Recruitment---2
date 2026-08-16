@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import backend.models  # Crucial: ensures Alembic/Base.metadata knows about all your tables
+from backend.database.connection import engine, Base
+import backend.models  # Crucial: ensures Base.metadata knows about all your tables before creating them
+
+# --- HACKATHON SHORTCUT ---
+# Instantly builds any missing tables in PostgreSQL on startup. No Alembic needed.
+Base.metadata.create_all(bind=engine)
+# --------------------------
 
 # Import all routers
 from backend.api.patient_routes import router as patient_router
@@ -27,12 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- ARCHITECTURE UPDATE ---
-# Base.metadata.create_all(bind=engine) has been removed.
-# The database schema is now strictly managed via Alembic migrations.
-# To initialize the DB, run: alembic upgrade head
-# ---------------------------
-
 # Register all routes
 app.include_router(patient_router)
 app.include_router(trial_router)
@@ -46,4 +46,4 @@ app.include_router(export_router)
 # Basic Health Check
 @app.get("/")
 def health_check():
-    return {"status": "API is running, routers registered, and CORS is securely configured."}
+    return {"status": "API is running, routers registered, CORS is secure, and tables are built!"}

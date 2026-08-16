@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     DATABASE_URL: str
     LLM_API_KEY: str
-    LLM_MODEL: str = "llama3-70b-8192"
+    LLM_MODEL: str = "llama-3.1-8b-instant"
     UPLOAD_DIRECTORY: str = "./uploads"
     ENVIRONMENT: str = "development"
 
