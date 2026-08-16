@@ -18,12 +18,11 @@ from backend.services.matching_service import (
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
 
-@router.get("/patient/{patient_id}/trial/{trial_id}", response_model=MatchResponse)
+@router.get("/patient/{patient_id}/trial/{trial_id}")
 def match_patient_to_trial(patient_id: str, trial_id: str, db: Session = Depends(get_db)):
     """
-    Read-only, in-memory scoring lookup - does NOT persist a ScreeningResult
-    (safe to poll, e.g. from search-as-you-type). Use POST /matching/screen/
-    if you need a persisted, verifiable screening_id.
+    On-demand matching (persist=False).
+    Does NOT generate a screening_id. Safe for polling.
     """
     try:
         result = screen_patient_for_trial(db, patient_id, trial_id, persist=False)
@@ -32,39 +31,17 @@ def match_patient_to_trial(patient_id: str, trial_id: str, db: Session = Depends
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/screen/", response_model=ScreeningResultResponse)
-def persist_screening(payload: ScreenRequest, db: Session = Depends(get_db)):
+@router.post("/screen/")
+def persist_screening(req: ScreenRequest, db: Session = Depends(get_db)):
     """
-    TASK 2: Persisted screening endpoint.
-
-    Runs the same matching logic as the read-only GET lookup above, but
-    actually saves the ScreeningResult row and returns the generated
-    screening_id - which is required before a result can be sent through
-    POST /verification/{screening_id}/verify or /override.
-
-    Request body:
-        { "patient_id": "P000123", "trial_id": "T001" }
-
-    Response (200): ScreeningResultResponse, e.g.
-        {
-          "screening_id": 42,
-          "patient_id": "P000123",
-          "trial_id": "T001",
-          "vitals_id": 7,
-          "match_percentage": 82.5,
-          "verdict": "APPROVED",
-          "eligible": true,
-          "criteria_snapshot": { "criteria_used": [...], "explanations": [...] },
-          "screened_at": "2026-08-16T12:34:56Z"
-        }
-    404 if patient_id or trial_id doesn't exist.
+    Persisted screening (persist=True).
+    Generates a screening_id for human-in-the-loop verification.
     """
     try:
-        result = screen_patient_for_trial(db, payload.patient_id, payload.trial_id, persist=True)
-        return result
+        result = screen_patient_for_trial(db, req.patient_id, req.trial_id, persist=True)
+        return {"data": result}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
 
 @router.get("/patient/{patient_id}/trials", response_model=List[TrialCandidateResult])
 def get_trials_for_patient(patient_id: str, db: Session = Depends(get_db)):
