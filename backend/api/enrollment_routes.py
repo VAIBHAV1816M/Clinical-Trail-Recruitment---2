@@ -10,6 +10,8 @@ from backend.models.user import User
 from backend.models.enrollment import Enrollment
 from backend.api.auth_deps import get_optional_current_user, require_patient
 
+from backend.models.trial import Trial
+
 router = APIRouter(prefix="/trials", tags=["Enrollment"])
 
 @router.get("/enrollments/my", response_model=List[EnrollmentResponse])
@@ -24,6 +26,40 @@ def get_my_enrollments(
     if not patient:
         return []
     return db.query(Enrollment).filter_by(patient_id=patient.patient_id).all()
+
+@router.post("/{trial_id}/apply", response_model=EnrollmentResponse)
+def apply_to_trial(
+    trial_id: str,
+    reason: Optional[str] = None,
+    auth_data: tuple = Depends(require_patient),
+    db: Session = Depends(get_db)
+):
+    """Allows authenticated patient to apply to an open trial after eligibility check."""
+    user, patient = auth_data
+    if not patient:
+        patient = db.query(Patient).filter_by(user_id=user.id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient profile not found.")
+    
+    trial = db.query(Trial).filter_by(trial_id=trial_id).first()
+    if not trial:
+        raise HTTPException(status_code=404, detail="Trial not found.")
+    if trial.status != "OPEN":
+        raise HTTPException(status_code=400, detail="Trial is not open for recruitment applications.")
+        
+    try:
+        existing_enrollment = db.query(Enrollment).filter_by(trial_id=trial_id, patient_id=patient.patient_id).first()
+        target_status = "ACCEPTED" if existing_enrollment else "INVITED"
+        return transition_enrollment(
+            db, 
+            patient.patient_id, 
+            trial_id, 
+            target_status, 
+            user.email, 
+            reason or "Direct Patient Application via Clinical Portal"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/{trial_id}/invite/{patient_id}", response_model=EnrollmentResponse)
 def invite_patient(

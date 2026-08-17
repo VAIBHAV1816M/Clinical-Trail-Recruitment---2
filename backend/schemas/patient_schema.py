@@ -68,6 +68,10 @@ class PatientUpdate(BaseModel):
     alcohol: Optional[bool] = None
     consent: Optional[bool] = None 
     user_id: Optional[int] = None
+    
+    vitals: Optional[VitalsCreate] = None
+    conditions: Optional[List[ConditionCreate]] = None
+    allergies: Optional[List[AllergyCreate]] = None
 
 class PatientResponse(BaseModel):
     patient_id: str
@@ -92,6 +96,8 @@ class PatientResponse(BaseModel):
     conditions: List[ConditionResponse] = []
     allergies: List[AllergyResponse] = []
     
+    is_profile_complete: Optional[bool] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 class BatchUploadResponse(BaseModel):

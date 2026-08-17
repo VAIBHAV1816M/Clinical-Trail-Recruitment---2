@@ -670,12 +670,18 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         trials,
+        setTrials,
         patients,
+        setPatients,
         screenings,
+        setScreenings,
         verifications,
+        setVerifications,
         enrollments,
+        setEnrollments,
         waitlists,
         notifications,
+        setNotifications,
         auditLogs,
         currentRole,
         setCurrentRole,

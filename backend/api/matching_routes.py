@@ -61,6 +61,37 @@ def match_patient_to_trial(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+from pydantic import BaseModel
+from typing import Any, Dict
+from backend.services.matching_service import check_trial_eligibility_with_inputs
+
+class DynamicEligibilityCheckPayload(BaseModel):
+    form_inputs: Optional[Dict[str, Any]] = None
+
+@router.post("/trial/{trial_id}/check-eligibility")
+def check_dynamic_eligibility(
+    trial_id: str,
+    payload: DynamicEligibilityCheckPayload = None,
+    auth_data: tuple = Depends(require_patient),
+    db: Session = Depends(get_db)
+):
+    """
+    Dynamic eligibility check for the authenticated patient against a specific trial's criteria.
+    Merges stored patient profile with form inputs and logs evaluation.
+    """
+    user, patient = auth_data
+    if not patient:
+        patient = db.query(Patient).filter_by(user_id=user.id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient profile not found.")
+    
+    inputs = payload.form_inputs if payload else {}
+    try:
+        result = check_trial_eligibility_with_inputs(db, patient.patient_id, trial_id, form_inputs=inputs, persist=True)
+        return {"data": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 @router.post("/screen/", response_model=MatchResponse)
 def persist_screening(
     req: ScreenRequest, 

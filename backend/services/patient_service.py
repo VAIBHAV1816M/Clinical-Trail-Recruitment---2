@@ -159,17 +159,31 @@ def get_patient(
     )
 
 
+def is_patient_profile_complete(patient: Patient) -> bool:
+    """
+    Determines if a patient profile has sufficient clinical and demographic details for matching.
+    """
+    if not patient:
+        return False
+    if not patient.dob or not patient.gender:
+        return False
+    if patient.smoking is None or patient.alcohol is None:
+        return False
+    if not patient.consent:
+        return False
+    if not patient.vitals or len(patient.vitals) == 0:
+        return False
+    return True
+
+
 def update_patient(
     db: Session,
     patient_id: str,
     patient_data: PatientUpdate,
 ) -> Patient | None:
     """
-    Update patient information.
-
+    Update patient information including nested vitals, conditions, and allergies.
     active_trial_id is intentionally not handled here.
-    Trial enrollment changes should happen through
-    dedicated enrollment routes.
     """
 
     patient = (
@@ -185,21 +199,49 @@ def update_patient(
         exclude_unset=True
     )
 
-    # ---------------------------------------------------------
-    # UPDATE PATIENT FIELDS
-    # ---------------------------------------------------------
+    # 1. Update direct Patient attributes
+    vitals_data = update_data.pop("vitals", None)
+    conditions_data = update_data.pop("conditions", None)
+    allergies_data = update_data.pop("allergies", None)
+    update_data.pop("active_trial_id", None)
 
     for field, value in update_data.items():
-        setattr(patient, field, value)
+        if hasattr(patient, field):
+            setattr(patient, field, value)
 
-    # ---------------------------------------------------------
-    # SAVE CHANGES
-    # ---------------------------------------------------------
+    # 2. Update/Add Vitals if provided
+    if vitals_data:
+        # Create a new latest vitals entry
+        db_vitals = PatientVitals(
+            patient_id=patient_id,
+            **vitals_data,
+        )
+        db.add(db_vitals)
 
+    # 3. Replace/Update Conditions if explicitly provided
+    if conditions_data is not None:
+        db.query(PatientCondition).filter_by(patient_id=patient_id).delete()
+        for cond in conditions_data:
+            db_condition = PatientCondition(
+                patient_id=patient_id,
+                **cond,
+            )
+            db.add(db_condition)
+
+    # 4. Replace/Update Allergies if explicitly provided
+    if allergies_data is not None:
+        db.query(PatientAllergy).filter_by(patient_id=patient_id).delete()
+        for allergy in allergies_data:
+            db_allergy = PatientAllergy(
+                patient_id=patient_id,
+                **allergy,
+            )
+            db.add(db_allergy)
+
+    # 5. Commit and refresh
     try:
         db.commit()
         db.refresh(patient)
-
     except Exception:
         db.rollback()
         raise

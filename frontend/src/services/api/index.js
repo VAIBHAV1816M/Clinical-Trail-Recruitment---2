@@ -111,15 +111,22 @@ export const authApi = {
 };
 
 export const trialsApi = {
-  getTrials: async () => {
+  getTrials: async (filters = {}) => {
     try {
-      const res = await authFetch('/trials/');
+      const query = new URLSearchParams();
+      if (filters.status) query.append('status', filters.status);
+      if (filters.search) query.append('search', filters.search);
+      if (filters.year) query.append('year', filters.year);
+      if (filters.month) query.append('month', filters.month);
+
+      const qs = query.toString();
+      const res = await authFetch(`/trials/${qs ? `?${qs}` : ''}`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) return data;
       }
     } catch (e) {
-      console.warn('Backend /trials/ unavailable, using mock data:', e);
+      console.warn('Backend /trials/ unavailable, using fallback:', e);
     }
     return INITIAL_TRIALS;
   },
@@ -143,6 +150,16 @@ export const trialsApi = {
       console.warn(`Backend /trials/${trialId} unavailable, using mock:`, e);
     }
     return INITIAL_TRIALS.find(t => t.trial_id === trialId) || null;
+  },
+  getTrialCriteria: async (trialId) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/criteria`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn(`Backend /trials/${trialId}/criteria unavailable:`, e);
+    }
+    const t = INITIAL_TRIALS.find(tr => tr.trial_id === trialId);
+    return t ? t.criteria || [] : [];
   },
   createManualTrial: async (trialData, criteria) => {
     try {
@@ -171,7 +188,6 @@ export const trialsApi = {
     } catch (e) {
       console.warn('Backend POST /trials/draft unavailable, using mock fallback:', e);
     }
-    // Simulated LLM criteria extraction fallback
     await new Promise(res => setTimeout(res, 800));
     return [
       { field: 'age', data_type: 'NUMERIC', classification: 'HARD', operator: 'BETWEEN', numeric_min: 18.0, numeric_max: 75.0, weight: 1.0 },
@@ -205,6 +221,21 @@ export const patientsApi = {
     }
     return null;
   },
+  updateMyProfile: async (profileData) => {
+    try {
+      const res = await authFetch('/patients/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      });
+      if (res.ok) return await res.json();
+      const err = await res.json().catch(() => ({ detail: 'Failed to update profile' }));
+      throw new Error(err.detail || 'Failed to update profile');
+    } catch (e) {
+      console.warn('Backend PUT /patients/me error:', e);
+      throw e;
+    }
+  },
   getPatient: async (patientId) => {
     try {
       const res = await authFetch(`/patients/${patientId}`);
@@ -230,6 +261,24 @@ export const patientsApi = {
 };
 
 export const matchingApi = {
+  checkTrialEligibility: async (trialId, formInputs = {}) => {
+    try {
+      const res = await authFetch(`/matching/trial/${trialId}/check-eligibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ form_inputs: formInputs })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) return json.data;
+      }
+      const err = await res.json().catch(() => ({ detail: 'Eligibility check failed' }));
+      throw new Error(err.detail || 'Eligibility check failed');
+    } catch (e) {
+      console.warn('Backend check-eligibility error:', e);
+      throw e;
+    }
+  },
   matchPatientToTrial: async (patientId, trialId, patients, trials) => {
     try {
       const res = await authFetch(`/matching/patient/${patientId}/trial/${trialId}`);
@@ -289,6 +338,21 @@ export const enrollmentsApi = {
       console.warn('Backend /trials/enrollments/my unavailable:', e);
     }
     return [];
+  },
+  applyToTrial: async (trialId, reason = null) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      if (res.ok) return await res.json();
+      const err = await res.json().catch(() => ({ detail: 'Application failed' }));
+      throw new Error(err.detail || 'Application failed');
+    } catch (e) {
+      console.warn('Backend applyToTrial error:', e);
+      throw e;
+    }
   },
   invitePatient: async (trialId, patientId, reason = null) => {
     try {

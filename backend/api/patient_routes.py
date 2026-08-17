@@ -12,6 +12,13 @@ from backend.api.auth_deps import get_optional_current_user, require_patient
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
+from backend.services.patient_service import create_patient, list_patients, update_patient as update_patient_svc, is_patient_profile_complete
+
+def _format_patient_response(patient: Patient) -> PatientResponse:
+    resp = PatientResponse.model_validate(patient)
+    resp.is_profile_complete = is_patient_profile_complete(patient)
+    return resp
+
 @router.get("/me", response_model=PatientResponse)
 def get_my_patient_profile(
     auth_data: tuple = Depends(require_patient),
@@ -29,7 +36,33 @@ def get_my_patient_profile(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Patient clinical profile not found for this account."
         )
-    return patient
+    return _format_patient_response(patient)
+
+@router.put("/me", response_model=PatientResponse)
+def update_my_patient_profile(
+    patient_update: PatientUpdate,
+    auth_data: tuple = Depends(require_patient),
+    db: Session = Depends(get_db)
+):
+    """
+    Update clinical profile for the authenticated patient during onboarding or profile editing.
+    """
+    user, patient = auth_data
+    if not patient:
+        patient = db.query(Patient).filter_by(user_id=user.id).first()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient clinical profile not found."
+        )
+    
+    updated = update_patient_svc(db, patient.patient_id, patient_update)
+    create_audit_log(
+        db=db, user_id=user.email, action="UPDATE_MY_PROFILE",
+        entity_type="Patient", entity_id=patient.patient_id,
+        old_value="PROFILE", new_value="UPDATED", reason="Patient self-service profile update"
+    )
+    return _format_patient_response(updated)
 
 @router.get("/", response_model=List[PatientResponse])
 def get_all_patients(

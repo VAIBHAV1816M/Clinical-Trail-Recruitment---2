@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from backend.database.session import get_db
 from backend.schemas.trial_schema import TrialCreate, TrialUpdate, TrialResponse
-from backend.schemas.criterion_schema import CriterionCreate
+from backend.schemas.criterion_schema import CriterionCreate, CriterionResponse
 from backend.services.trial_service import create_draft, confirm_criteria
 from backend.services.pdf_service import extract_text_from_pdf
 from backend.models.trial import Trial
@@ -25,13 +25,35 @@ def get_my_trials(
 
 @router.get("/", response_model=List[TrialResponse])
 def get_all_trials(
+    status: Optional[str] = None,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    search: Optional[str] = None,
+    condition: Optional[str] = None,
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-    """List trials."""
-    return db.query(Trial).offset(skip).limit(limit).all()
+    """List trials with optional filtering."""
+    query = db.query(Trial)
+    
+    if status:
+        query = query.filter(Trial.status.ilike(f"%{status}%"))
+    if search:
+        query = query.filter(
+            (Trial.trial_name.ilike(f"%{search}%")) | 
+            (Trial.description.ilike(f"%{search}%")) |
+            (Trial.trial_id.ilike(f"%{search}%"))
+        )
+    if year:
+        from sqlalchemy import extract
+        query = query.filter(extract('year', Trial.created_at) == year)
+    if month:
+        from sqlalchemy import extract
+        query = query.filter(extract('month', Trial.created_at) == month)
+        
+    return query.offset(skip).limit(limit).all()
 
 @router.post("/", response_model=TrialResponse)
 def create_manual_trial(
@@ -149,3 +171,11 @@ def get_trial(trial_id: str, db: Session = Depends(get_db)):
     if not trial:
         raise HTTPException(status_code=404, detail="Trial not found")
     return trial
+
+@router.get("/{trial_id}/criteria", response_model=List[CriterionResponse])
+def get_trial_criteria(trial_id: str, db: Session = Depends(get_db)):
+    """Retrieve all specific eligibility criteria for a given trial."""
+    trial = db.query(Trial).filter_by(trial_id=trial_id).first()
+    if not trial:
+        raise HTTPException(status_code=404, detail="Trial not found")
+    return trial.criteria

@@ -1,10 +1,12 @@
-import React from 'react';
-import { Bell, Mail, CheckCircle2, XCircle, Inbox } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Mail, CheckCircle2, XCircle, Inbox, FileCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatDate } from '../../utils/formatters';
+import { DynamicEligibilityModal } from '../../components/patient/DynamicEligibilityModal';
 
-export function PatientNotificationsPage() {
+export function PatientNotificationsPage({ setActiveTab }) {
   const { notifications, currentPatientId, respondNotification, trials } = useApp();
+  const [selectedTrialForCheck, setSelectedTrialForCheck] = useState(null);
 
   const myNotifications = notifications.filter(n => n.patient_id === currentPatientId);
 
@@ -62,24 +64,40 @@ export function PatientNotificationsPage() {
                   {notif.message}
                 </p>
 
-                {isUnanswered && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {notif.trial_id && (
                     <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => respondNotification(notif.notification_id, 'DECLINED')}
+                      className="btn btn-primary btn-sm"
+                      onClick={() => {
+                        const targetTrial = trial || { trial_id: notif.trial_id, trial_name: notif.trial_id };
+                        setSelectedTrialForCheck(targetTrial);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                     >
-                      <XCircle size={14} />
-                      <span>Decline</span>
+                      <FileCheck size={14} />
+                      <span>Check Eligibility</span>
                     </button>
-                    <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => respondNotification(notif.notification_id, 'ACCEPTED')}
-                    >
-                      <CheckCircle2 size={14} />
-                      <span>Accept Invitation</span>
-                    </button>
-                  </div>
-                )}
+                  )}
+
+                  {isUnanswered && (
+                    <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => respondNotification(notif.notification_id, 'DECLINED')}
+                      >
+                        <XCircle size={14} />
+                        <span>Decline</span>
+                      </button>
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => respondNotification(notif.notification_id, 'ACCEPTED')}
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>Accept Invitation</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -94,6 +112,18 @@ export function PatientNotificationsPage() {
             You have no incoming messages or study alerts at this time.
           </p>
         </div>
+      )}
+
+      {selectedTrialForCheck && (
+        <DynamicEligibilityModal
+          trial={selectedTrialForCheck}
+          isOpen={!!selectedTrialForCheck}
+          onClose={() => setSelectedTrialForCheck(null)}
+          onNavigateToEnrollment={() => {
+            setSelectedTrialForCheck(null);
+            if (setActiveTab) setActiveTab('enrollment');
+          }}
+        />
       )}
     </div>
   );

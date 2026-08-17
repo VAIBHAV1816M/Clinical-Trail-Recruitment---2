@@ -47,10 +47,11 @@ def flatten_patient_data(patient: Patient) -> Tuple[Dict[str, Any], Optional[int
     
     return data, vitals_id
 
-def run_matching_engine(patient: Patient, trial: Trial) -> Dict[str, Any]:
+def run_matching_engine(patient: Patient, trial: Trial, overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     The core orchestrator. Returns the exact shape of ScreeningResultResponse, 
     completely isolated from database IO.
+    Supports optional overrides (e.g. from dynamic eligibility forms).
     """
     # 1. Active-trial conflict check (Short Circuit)
     if patient.active_trial_id is not None and patient.active_trial_id != trial.trial_id:
@@ -71,6 +72,22 @@ def run_matching_engine(patient: Patient, trial: Trial) -> Dict[str, Any]:
     
     # 2. Flatten data & capture vitals_id
     patient_data, vitals_id = flatten_patient_data(patient)
+    
+    # Merge overrides if provided
+    if overrides:
+        for k, v in overrides.items():
+            if v is not None:
+                if k == "conditions" and isinstance(v, list):
+                    # Combine conditions if list
+                    existing_conds = set(patient_data.get("conditions", []))
+                    existing_conds.update(v)
+                    patient_data["conditions"] = list(existing_conds)
+                elif k == "allergies" and isinstance(v, list):
+                    existing_allergies = set(patient_data.get("allergies", []))
+                    existing_allergies.update(v)
+                    patient_data["allergies"] = list(existing_allergies)
+                else:
+                    patient_data[k] = v
     
     # 3. Evaluate Hard Criteria
     hard_passed, hard_failures = evaluate_hard_criteria(patient_data, hard_criteria)

@@ -25,16 +25,20 @@ import { AuditTrailPage } from './pages/researcher/AuditTrailPage';
 
 // Patient Pages
 import { PatientHomePage } from './pages/patient/PatientHomePage';
+import { BrowseTrialsPage } from './pages/patient/BrowseTrialsPage';
 import { RecommendedTrialsPage } from './pages/patient/RecommendedTrialsPage';
 import { PatientTrialDetailPage } from './pages/patient/PatientTrialDetailPage';
 import { InvitationsPage } from './pages/patient/InvitationsPage';
 import { MyEnrollmentPage } from './pages/patient/MyEnrollmentPage';
 import { PatientProfileViewPage } from './pages/patient/PatientProfileViewPage';
 import { PatientNotificationsPage } from './pages/patient/PatientNotificationsPage';
+import { PatientOnboardingModal } from './components/patient/PatientOnboardingModal';
 
 function AppContent() {
   const { isAuthenticated, role, user, profile, loading: authLoading } = useAuth();
-  const { currentRole, setCurrentRole, selectedTrialId, setSelectedTrialId, setCurrentPatientId } = useApp();
+  const { currentRole, setCurrentRole, selectedTrialId, setSelectedTrialId, setCurrentPatientId, patients, setPatients, showToast } = useApp();
+
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   // Keep AppContext synced with authenticated role & profile
   useEffect(() => {
@@ -184,52 +188,86 @@ function AppContent() {
   }
 
   // Patient Experience
+  const currentPatient = patients[0] || null;
+  const isPatient = (role === 'PATIENT' || currentRole === 'PATIENT');
+  const needsOnboarding = isPatient && currentPatient && (currentPatient.is_profile_complete === false || (!currentPatient.dob && !currentPatient.gender));
+
   return (
-    <PatientLayout activeTab={patientTab} setActiveTab={setPatientTab}>
-      {patientTab === 'home' && (
-        <PatientHomePage
-          setActiveTab={setPatientTab}
-          onSelectTrial={(id) => {
-            setPatientSelectedTrialId(id);
-            setPatientTab('trial-detail');
+    <>
+      <PatientLayout activeTab={patientTab} setActiveTab={setPatientTab}>
+        {patientTab === 'home' && (
+          <PatientHomePage
+            setActiveTab={setPatientTab}
+            onSelectTrial={(id) => {
+              setPatientSelectedTrialId(id);
+              setPatientTab('trial-detail');
+            }}
+          />
+        )}
+
+        {patientTab === 'browse' && (
+          <BrowseTrialsPage
+            setActiveTab={setPatientTab}
+            onSelectTrial={(id) => {
+              setPatientSelectedTrialId(id);
+              setPatientTab('trial-detail');
+            }}
+          />
+        )}
+
+        {patientTab === 'recommended' && (
+          <RecommendedTrialsPage
+            setActiveTab={setPatientTab}
+            onSelectTrial={(id) => {
+              setPatientSelectedTrialId(id);
+              setPatientTab('trial-detail');
+            }}
+          />
+        )}
+
+        {patientTab === 'trial-detail' && (
+          <PatientTrialDetailPage
+            trialId={patientSelectedTrialId}
+            onBack={() => setPatientTab('browse')}
+            setActiveTab={setPatientTab}
+          />
+        )}
+
+        {patientTab === 'invitations' && (
+          <InvitationsPage setActiveTab={setPatientTab} />
+        )}
+
+        {patientTab === 'enrollment' && (
+          <MyEnrollmentPage setActiveTab={setPatientTab} />
+        )}
+
+        {patientTab === 'profile' && (
+          <PatientProfileViewPage />
+        )}
+
+        {patientTab === 'notifications' && (
+          <PatientNotificationsPage setActiveTab={setPatientTab} />
+        )}
+      </PatientLayout>
+
+      {/* Patient Onboarding Modal on First Login / Incomplete Profile */}
+      {needsOnboarding && !onboardingDismissed && (
+        <PatientOnboardingModal
+          isOpen={true}
+          initialProfile={currentPatient}
+          onClose={() => setOnboardingDismissed(true)}
+          onComplete={(updatedPatient) => {
+            setOnboardingDismissed(true);
+            if (setPatients && updatedPatient) {
+              setPatients([updatedPatient]);
+            }
+            if (showToast) {
+              showToast('Profile Completed', 'Your clinical profile has been updated and registered.', 'success');
+            }
           }}
         />
       )}
-
-      {patientTab === 'recommended' && (
-        <RecommendedTrialsPage
-          setActiveTab={setPatientTab}
-          onSelectTrial={(id) => {
-            setPatientSelectedTrialId(id);
-            setPatientTab('trial-detail');
-          }}
-        />
-      )}
-
-      {patientTab === 'trial-detail' && (
-        <PatientTrialDetailPage
-          trialId={patientSelectedTrialId}
-          onBack={() => setPatientTab('recommended')}
-          setActiveTab={setPatientTab}
-        />
-      )}
-
-      {patientTab === 'invitations' && (
-        <InvitationsPage setActiveTab={setPatientTab} />
-      )}
-
-      {patientTab === 'enrollment' && (
-        <MyEnrollmentPage setActiveTab={setPatientTab} />
-      )}
-
-      {patientTab === 'profile' && (
-        <PatientProfileViewPage />
-      )}
-
-      {patientTab === 'notifications' && (
-        <PatientNotificationsPage />
-      )}
-    </PatientLayout>
+    </>
   );
 }
 

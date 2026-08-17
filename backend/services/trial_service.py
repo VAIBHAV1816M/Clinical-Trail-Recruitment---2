@@ -73,5 +73,30 @@ def confirm_criteria(
         
     db.commit()
     db.refresh(db_trial)
+
+    # Automatically notify active registered patients of the newly published trial
+    try:
+        from backend.models.patient import Patient
+        from backend.models.notification import Notification
+        from datetime import datetime, timezone
+
+        patients = db.query(Patient).all()
+        for p in patients:
+            existing_notif = db.query(Notification).filter_by(patient_id=p.patient_id, trial_id=trial_id).first()
+            if not existing_notif:
+                notif = Notification(
+                    patient_id=p.patient_id,
+                    trial_id=trial_id,
+                    message=f"New Clinical Trial Available: '{db_trial.trial_name}'. Check whether you are eligible.",
+                    channel="IN_APP",
+                    delivery_status="SENT",
+                    response="NONE",
+                    sent_at=datetime.now(timezone.utc)
+                )
+                db.add(notif)
+        db.commit()
+    except Exception as e:
+        # Don't fail trial creation if notification dispatch encounters an error
+        pass
     
     return db_trial

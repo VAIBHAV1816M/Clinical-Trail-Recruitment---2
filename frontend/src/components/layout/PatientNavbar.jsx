@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Heart,
   Home,
+  Compass,
   Sparkles,
   Mail,
   UserCheck,
@@ -47,6 +48,7 @@ export function PatientNavbar({ activeTab, setActiveTab }) {
 
   const navLinks = [
     { id: 'home', label: 'Home', icon: Home },
+    { id: 'browse', label: 'Browse Trials', icon: Compass },
     { id: 'recommended', label: 'Recommended Trials', icon: Sparkles },
     { id: 'invitations', label: 'Invitations', icon: Mail, badge: pendingInvites > 0 ? pendingInvites : null },
     { id: 'enrollment', label: 'My Enrollment', icon: UserCheck },

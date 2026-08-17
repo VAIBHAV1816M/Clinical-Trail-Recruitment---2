@@ -90,6 +90,43 @@ def screen_patient_for_trial(db: Session, patient_id: str, trial_id: str, persis
     return result
 
 
+def check_trial_eligibility_with_inputs(
+    db: Session, 
+    patient_id: str, 
+    trial_id: str, 
+    form_inputs: Dict[str, Any] = None, 
+    persist: bool = True
+) -> Dict[str, Any]:
+    """
+    Evaluates dynamic eligibility form inputs against a trial for a patient.
+    Persists screening record for patient+trial and provides friendly feedback.
+    """
+    patient = _get_patient_eager(db, patient_id)
+    trial = _get_trial_eager(db, trial_id)
+
+    if not patient or not trial:
+        raise ValueError("Patient or Trial not found.")
+
+    result = run_matching_engine(patient, trial, overrides=form_inputs)
+    result = {**result, "patient_id": patient.patient_id, "trial_id": trial.trial_id}
+
+    if persist:
+        db_screening = _persist_screening(db, patient.patient_id, trial.trial_id, result)
+        db.commit()
+        db.refresh(db_screening)
+        result["screening_id"] = db_screening.screening_id
+        result["screened_at"] = db_screening.screened_at
+
+    if result["eligible"]:
+        message = "Based on the information provided, you currently meet the required eligibility criteria for this study."
+    else:
+        message = "You do not meet one or more required eligibility criteria for this study."
+
+    result["message"] = message
+    result["can_apply"] = result["eligible"]
+    return result
+
+
 def find_trials_for_patient(db: Session, patient_id: str, persist: bool = False) -> List[dict]:
     """
     Mode 2: Rank all OPEN trials for a single patient. Returns lightweight
