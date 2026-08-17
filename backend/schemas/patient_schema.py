@@ -49,6 +49,7 @@ class PatientCreate(BaseModel):
     smoking: Optional[bool] = None
     alcohol: Optional[bool] = None
     consent: bool # Mandatory check on creation
+    user_id: Optional[int] = None
     
     vitals: Optional[VitalsCreate] = None
     conditions: List[ConditionCreate] = []
@@ -66,11 +67,11 @@ class PatientUpdate(BaseModel):
     smoking: Optional[bool] = None
     alcohol: Optional[bool] = None
     consent: Optional[bool] = None 
-    
-    # Intentionally omitting active_trial_id to enforce state management via enrollment routes
+    user_id: Optional[int] = None
 
 class PatientResponse(BaseModel):
     patient_id: str
+    user_id: Optional[int] = None
     name: str
     gender: Optional[str] = None
     dob: Optional[date] = None

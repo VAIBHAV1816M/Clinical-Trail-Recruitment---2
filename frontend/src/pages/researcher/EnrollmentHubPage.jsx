@@ -96,6 +96,13 @@ export function EnrollmentHubPage({ onSelectTrial }) {
                   </tr>
                 );
               })}
+              {enrollments.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--slate-500)' }}>
+                    No clinical study enrollments recorded yet. Invite approved candidates from your study workspace to initiate participation workflows.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -41,6 +41,60 @@ export function DashboardPage({ setActiveTab }) {
   const [selectedScreeningIdForOverride, setSelectedScreeningIdForOverride] = useState(null);
 
   const currentTrial = trials.find(t => t.trial_id === selectedTrialId) || trials[0];
+
+  if (!currentTrial) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div
+          className="card"
+          style={{
+            padding: '3.5rem 2rem',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.25rem',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.03), rgba(2, 132, 199, 0.05))',
+            border: '1px dashed var(--border-subtle)',
+            borderRadius: 'var(--radius-xl)'
+          }}
+        >
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'var(--primary-50)',
+              color: 'var(--primary-600)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <FlaskConical size={32} />
+          </div>
+          <div style={{ maxWidth: 480 }}>
+            <h3 style={{ fontSize: '1.35rem', color: 'var(--slate-900)', fontWeight: 700 }}>
+              No Clinical Trials in Your Portfolio Yet
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: 6 }}>
+              You have not created or been assigned any clinical trials yet. Use the AI Protocol Extraction Wizard to upload your study protocol and launch automated candidate matching.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => setActiveTab('create-trial')}
+            >
+              <Sparkles size={16} />
+              <span>Launch AI Trial Builder</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const stats = getDashboardStats(currentTrial.trial_id);
   const candidates = getCandidatesForTrial(currentTrial.trial_id);
 

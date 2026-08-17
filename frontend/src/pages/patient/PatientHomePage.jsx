@@ -24,15 +24,16 @@ export function PatientHomePage({ setActiveTab, onSelectTrial }) {
     notifications
   } = useApp();
 
-  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
-  const recommendedTrials = getTrialsForPatient(patient.patient_id);
+  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
+  const patientName = patient?.name ? patient.name.split(' ')[0] : 'Participant';
+  const recommendedTrials = patient ? getTrialsForPatient(patient.patient_id) : [];
   const topRecommendations = recommendedTrials.filter(t => t.eligible).slice(0, 3);
 
-  const myEnrollments = enrollments.filter(e => e.patient_id === patient.patient_id);
+  const myEnrollments = patient ? enrollments.filter(e => e.patient_id === patient.patient_id) : [];
   const pendingInvites = myEnrollments.filter(e => e.status === 'INVITED');
   const activeEnrolled = myEnrollments.find(e => e.status === 'ENROLLED');
 
-  const latestVitals = patient.vitals && patient.vitals.length > 0 ? patient.vitals[0] : null;
+  const latestVitals = patient && patient.vitals && patient.vitals.length > 0 ? patient.vitals[0] : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -45,10 +46,12 @@ export function PatientHomePage({ setActiveTab, onSelectTrial }) {
             </span>
           </div>
           <h1 style={{ fontSize: '2rem', color: '#ffffff', fontWeight: 800 }}>
-            Welcome back, {patient.name.split(' ')[0]}
+            Welcome back, {patientName}
           </h1>
           <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.96rem', marginTop: '0.5rem', lineHeight: 1.6 }}>
-            You currently have <strong>{recommendedTrials.filter(t => t.eligible).length} clinical trials</strong> that may be relevant to your health profile. Participating in clinical studies gives you access to cutting-edge therapies and specialized medical care.
+            {recommendedTrials.filter(t => t.eligible).length > 0 
+              ? `You currently have ${recommendedTrials.filter(t => t.eligible).length} clinical trials that may be relevant to your health profile. Participating in clinical studies gives you access to cutting-edge therapies.`
+              : 'Welcome to your private clinical participant portal. Connect your health profile to discover open trials matching your eligibility.'}
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '1.25rem' }}>
@@ -138,58 +141,64 @@ export function PatientHomePage({ setActiveTab, onSelectTrial }) {
           </button>
         </div>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {topRecommendations.map((t) => (
-            <div
-              key={t.trial_id}
-              style={{
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1.25rem',
-                flexWrap: 'wrap',
-                background: '#ffffff'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', maxWidth: 700 }}>
-                <MatchScoreBadge score={t.match_percentage} isRadial={true} size={64} />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <h4 style={{ fontSize: '1.05rem', color: 'var(--slate-900)' }}>
-                      {t.trial_name}
-                    </h4>
-                    <StatusBadge status={t.verdict} size="sm" />
-                  </div>
-                  <p style={{ fontSize: '0.84rem', color: 'var(--slate-600)', marginTop: 4 }}>
-                    {t.description}
-                  </p>
-                  
-                  {/* Friendly reasons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.6rem', fontSize: '0.78rem', color: '#065f46', fontWeight: 600 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <CheckCircle2 size={13} color="#059669" /> Matches age & conditions
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <CheckCircle2 size={13} color="#059669" /> Recruiting in your area
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => {
-                  if (onSelectTrial) onSelectTrial(t.trial_id);
-                  setActiveTab('trial-detail');
+          {topRecommendations.length > 0 ? (
+            topRecommendations.map((t) => (
+              <div
+                key={t.trial_id}
+                style={{
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1.25rem',
+                  flexWrap: 'wrap',
+                  background: '#ffffff'
                 }}
               >
-                <span>View Study Guide</span>
-                <ArrowRight size={14} />
-              </button>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', maxWidth: 700 }}>
+                  <MatchScoreBadge score={t.match_percentage} isRadial={true} size={64} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h4 style={{ fontSize: '1.05rem', color: 'var(--slate-900)' }}>
+                        {t.trial_name}
+                      </h4>
+                      <StatusBadge status={t.verdict} size="sm" />
+                    </div>
+                    <p style={{ fontSize: '0.84rem', color: 'var(--slate-600)', marginTop: 4 }}>
+                      {t.description}
+                    </p>
+                    
+                    {/* Friendly reasons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.6rem', fontSize: '0.78rem', color: '#065f46', fontWeight: 600 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <CheckCircle2 size={13} color="#059669" /> Matches age & conditions
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <CheckCircle2 size={13} color="#059669" /> Recruiting in your area
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    if (onSelectTrial) onSelectTrial(t.trial_id);
+                    setActiveTab('trial-detail');
+                  }}
+                >
+                  <span>View Study Guide</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--slate-500)', fontSize: '0.88rem' }}>
+              No matched clinical studies right now. As new study protocols are registered by clinical researchers, eligible recommendations will be highlighted here.
             </div>
-          ))}
+          )}
         </div>
       </div>
 

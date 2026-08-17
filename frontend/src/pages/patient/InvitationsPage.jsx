@@ -23,10 +23,10 @@ export function InvitationsPage({ setActiveTab }) {
     showToast
   } = useApp();
 
-  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
-  const myInvitations = enrollments.filter(
+  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
+  const myInvitations = patient ? enrollments.filter(
     e => e.patient_id === patient.patient_id && (e.status === 'INVITED' || e.status === 'ACCEPTED' || e.status === 'DECLINED')
-  );
+  ) : [];
 
   const handleAccept = (trialId) => {
     acceptInvite(trialId, patient.patient_id);

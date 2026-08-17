@@ -15,8 +15,8 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 export function RecommendedTrialsPage({ onSelectTrial, setActiveTab }) {
   const { patients, currentPatientId, getTrialsForPatient } = useApp();
 
-  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
-  const recommendedTrials = getTrialsForPatient(patient.patient_id);
+  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
+  const recommendedTrials = patient ? getTrialsForPatient(patient.patient_id) : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -30,9 +30,10 @@ export function RecommendedTrialsPage({ onSelectTrial, setActiveTab }) {
       </div>
 
       {/* Trial Cards Stream */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {recommendedTrials.map((trial) => {
-          const isEligible = trial.eligible;
+      {recommendedTrials.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {recommendedTrials.map((trial) => {
+            const isEligible = trial.eligible;
 
           return (
             <div
@@ -113,6 +114,27 @@ export function RecommendedTrialsPage({ onSelectTrial, setActiveTab }) {
           );
         })}
       </div>
+      ) : (
+        <div
+          className="card"
+          style={{
+            padding: '3rem 1.5rem',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem'
+          }}
+        >
+          <Sparkles size={36} color="var(--slate-400)" />
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--slate-800)', fontWeight: 700 }}>
+            No Recommended Trials Available
+          </h3>
+          <p style={{ fontSize: '0.86rem', color: 'var(--slate-500)', maxWidth: 460 }}>
+            There are currently no open clinical trials matching your health profile. When new trials opening recruitment match your qualifications, they will appear here.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

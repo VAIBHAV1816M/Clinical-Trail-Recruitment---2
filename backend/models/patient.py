@@ -21,11 +21,13 @@ class Patient(Base):
     consent = Column(Boolean, nullable=False) # Legally mandatory
     
     active_trial_id = Column(String, ForeignKey("trials.trial_id"), nullable=True, index=True) 
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True, index=True)
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
+    user = relationship("User", back_populates="patient_profile")
     vitals = relationship("PatientVitals", back_populates="patient", cascade="all, delete-orphan")
     conditions = relationship("PatientCondition", back_populates="patient", cascade="all, delete-orphan")
     allergies = relationship("PatientAllergy", back_populates="patient", cascade="all, delete-orphan")

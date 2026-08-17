@@ -18,10 +18,27 @@ export function PatientTrialDetailPage({ trialId, onBack, setActiveTab }) {
   const { trials, patients, currentPatientId, enrollments, acceptInvite, showToast } = useApp();
   const [interestSubmitted, setInterestSubmitted] = useState(false);
 
-  const trial = trials.find(t => t.trial_id === trialId) || trials[0];
-  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
+  const trial = trials.find(t => t.trial_id === trialId) || trials[0] || null;
+  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
   
-  const existingEnrollment = enrollments.find(e => e.trial_id === trial.trial_id && e.patient_id === patient.patient_id);
+  if (!trial) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 900, margin: '0 auto' }}>
+        {onBack && (
+          <button className="btn btn-ghost btn-sm" onClick={onBack} style={{ width: 'fit-content' }}>
+            <ArrowLeft size={16} />
+            <span>Back to Recommended Trials</span>
+          </button>
+        )}
+        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--slate-500)' }}>
+          <h3>Clinical Trial Not Found</h3>
+          <p>The requested study protocol is not currently available.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const existingEnrollment = patient ? enrollments.find(e => e.trial_id === trial.trial_id && e.patient_id === patient.patient_id) : null;
 
   const handleExpressInterest = () => {
     setInterestSubmitted(true);

@@ -14,10 +14,17 @@ def create_draft(text: str) -> List[CriterionCreate]:
     """
     return extract_criteria(text)
 
-def confirm_criteria(db: Session, trial_data: TrialCreate, criteria: List[CriterionCreate], provided_trial_id: str = None) -> Trial:
+def confirm_criteria(
+    db: Session, 
+    trial_data: TrialCreate, 
+    criteria: List[CriterionCreate], 
+    provided_trial_id: str = None,
+    researcher_id: int = None
+) -> Trial:
     """
     Manual/Review Path: Commits the Trial and its Criteria to the database.
-    Accepts an optional provided_trial_id to support confirming an in-progress draft route.
+    Accepts an optional provided_trial_id to support confirming an in-progress draft route,
+    and optional researcher_id for ownership.
     """
     # If the route passes an ID, use it. Otherwise mint a new sequential one.
     if provided_trial_id:
@@ -35,16 +42,31 @@ def confirm_criteria(db: Session, trial_data: TrialCreate, criteria: List[Criter
             except ValueError:
                 trial_id = "T001"
                 
-    db_trial = Trial(
-        trial_id=trial_id,
-        trial_name=trial_data.trial_name,
-        description=trial_data.description,
-        source_type=trial_data.source_type,
-        target_recruitment=trial_data.target_recruitment,
-        original_text=trial_data.original_text,
-        status="OPEN"  # Correct status vocabulary
-    )
-    db.add(db_trial)
+    effective_researcher_id = researcher_id or trial_data.researcher_id
+
+    existing_trial = db.query(Trial).filter_by(trial_id=trial_id).first()
+    if existing_trial:
+        db_trial = existing_trial
+        db_trial.trial_name = trial_data.trial_name
+        db_trial.description = trial_data.description
+        if trial_data.target_recruitment is not None:
+            db_trial.target_recruitment = trial_data.target_recruitment
+        if effective_researcher_id:
+            db_trial.researcher_id = effective_researcher_id
+        db_trial.status = "OPEN"
+        db.query(TrialCriterion).filter_by(trial_id=trial_id).delete()
+    else:
+        db_trial = Trial(
+            trial_id=trial_id,
+            trial_name=trial_data.trial_name,
+            description=trial_data.description,
+            source_type=trial_data.source_type,
+            target_recruitment=trial_data.target_recruitment,
+            original_text=trial_data.original_text,
+            researcher_id=effective_researcher_id,
+            status="OPEN"  # Correct status vocabulary
+        )
+        db.add(db_trial)
     
     for crit in criteria:
         db.add(TrialCriterion(trial_id=trial_id, **crit.model_dump()))

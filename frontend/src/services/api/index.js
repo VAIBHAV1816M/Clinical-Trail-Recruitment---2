@@ -2,7 +2,7 @@
  * AegisTrial — Unified API Client Service
  * 
  * Connects directly to the FastAPI backend routes using VITE_API_BASE_URL.
- * Supports graceful fallback to mock data & client-side matching engine.
+ * Supports JWT authentication headers and graceful fallback to mock data & client-side matching engine.
  */
 
 import {
@@ -19,22 +19,125 @@ import { runMatchingEngine, computeGaps } from './matchingEngine';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
+/**
+ * Authenticated fetch helper that injects Bearer JWT token if present.
+ */
+export async function authFetch(endpoint, options = {}) {
+  const token = localStorage.getItem('aegis_auth_token');
+  const headers = {
+    ...options.headers
+  };
+
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  return fetch(url, { ...options, headers });
+}
+
+export const authApi = {
+  login: async ({ email, password }) => {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Login failed' }));
+      throw new Error(err.detail || 'Invalid email or password');
+    }
+    return await res.json();
+  },
+
+  register: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
+      throw new Error(err.detail || 'Registration failed');
+    }
+    return await res.json();
+  },
+
+  getMe: async (customToken = null) => {
+    const token = customToken || localStorage.getItem('aegis_auth_token');
+    if (!token) return null;
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) return await res.json();
+    return null;
+  },
+
+  getMyResearcherProfile: async () => {
+    const res = await authFetch('/researchers/me');
+    if (res.ok) return await res.json();
+    return null;
+  },
+
+  getMyPatientProfile: async () => {
+    const res = await authFetch('/patients/me');
+    if (res.ok) return await res.json();
+    return null;
+  },
+
+  getMyTrials: async () => {
+    const res = await authFetch('/trials/my');
+    if (res.ok) return await res.json();
+    return [];
+  },
+
+  getMyRecommendedTrials: async () => {
+    const res = await authFetch('/matching/my/trials');
+    if (res.ok) return await res.json();
+    return [];
+  },
+
+  getMyNotifications: async () => {
+    const res = await authFetch('/notifications/my');
+    if (res.ok) return await res.json();
+    return [];
+  },
+
+  getMyEnrollments: async () => {
+    const res = await authFetch('/trials/enrollments/my');
+    if (res.ok) return await res.json();
+    return [];
+  }
+};
+
 export const trialsApi = {
   getTrials: async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/trials/`);
+      const res = await authFetch('/trials/');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data;
+        if (Array.isArray(data)) return data;
       }
     } catch (e) {
       console.warn('Backend /trials/ unavailable, using mock data:', e);
     }
     return INITIAL_TRIALS;
   },
+  getMyTrials: async () => {
+    try {
+      const res = await authFetch('/trials/my');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) return data;
+      }
+    } catch (e) {
+      console.warn('Backend /trials/my unavailable:', e);
+    }
+    return [];
+  },
   getTrial: async (trialId) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/trials/${trialId}`);
+      const res = await authFetch(`/trials/${trialId}`);
       if (res.ok) return await res.json();
     } catch (e) {
       console.warn(`Backend /trials/${trialId} unavailable, using mock:`, e);
@@ -43,7 +146,7 @@ export const trialsApi = {
   },
   createManualTrial: async (trialData, criteria) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/trials/`, {
+      const res = await authFetch('/trials/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trial_data: trialData, criteria })
@@ -60,7 +163,7 @@ export const trialsApi = {
       if (file) formData.append('file', file);
       if (text) formData.append('text', text);
 
-      const res = await fetch(`${API_BASE_URL}/trials/draft`, {
+      const res = await authFetch('/trials/draft', {
         method: 'POST',
         body: formData
       });
@@ -83,19 +186,28 @@ export const trialsApi = {
 export const patientsApi = {
   getPatients: async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/patients/?skip=0&limit=100`);
+      const res = await authFetch('/patients/?skip=0&limit=100');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data;
+        if (Array.isArray(data)) return data;
       }
     } catch (e) {
       console.warn('Backend /patients/ unavailable, using mock data:', e);
     }
     return INITIAL_PATIENTS;
   },
+  getMyPatientProfile: async () => {
+    try {
+      const res = await authFetch('/patients/me');
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend /patients/me unavailable:', e);
+    }
+    return null;
+  },
   getPatient: async (patientId) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/patients/${patientId}`);
+      const res = await authFetch(`/patients/${patientId}`);
       if (res.ok) return await res.json();
     } catch (e) {
       console.warn(`Backend /patients/${patientId} unavailable, using mock:`, e);
@@ -104,7 +216,7 @@ export const patientsApi = {
   },
   registerPatient: async (patientData) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/patients/?force=true`, {
+      const res = await authFetch('/patients/?force=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patientData)
@@ -120,7 +232,7 @@ export const patientsApi = {
 export const matchingApi = {
   matchPatientToTrial: async (patientId, trialId, patients, trials) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/matching/patient/${patientId}/trial/${trialId}`);
+      const res = await authFetch(`/matching/patient/${patientId}/trial/${trialId}`);
       if (res.ok) {
         const json = await res.json();
         if (json.data) return json.data;
@@ -135,7 +247,7 @@ export const matchingApi = {
   },
   screenPatient: async (patientId, trialId, patients, trials) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/matching/screen/`, {
+      const res = await authFetch('/matching/screen/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patient_id: patientId, trial_id: trialId })
@@ -156,6 +268,120 @@ export const matchingApi = {
       screening_id: Date.now(),
       screened_at: new Date().toISOString()
     };
+  },
+  getMyRecommendedTrials: async () => {
+    try {
+      const res = await authFetch('/matching/my/trials');
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend /matching/my/trials unavailable:', e);
+    }
+    return [];
+  }
+};
+
+export const enrollmentsApi = {
+  getMyEnrollments: async () => {
+    try {
+      const res = await authFetch('/trials/enrollments/my');
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend /trials/enrollments/my unavailable:', e);
+    }
+    return [];
+  },
+  invitePatient: async (trialId, patientId, reason = null) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/invite/${patientId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend invite failed:', e);
+    }
+    return null;
+  },
+  acceptInvite: async (trialId, patientId, reason = null) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/accept/${patientId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend accept failed:', e);
+    }
+    return null;
+  },
+  declineInvite: async (trialId, patientId, reason = null) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/decline/${patientId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend decline failed:', e);
+    }
+    return null;
+  },
+  enrollPatient: async (trialId, patientId, reason = null) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/enroll/${patientId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend enroll failed:', e);
+    }
+    return null;
+  },
+  dropPatient: async (trialId, patientId, reason = null) => {
+    try {
+      const res = await authFetch(`/trials/${trialId}/drop/${patientId}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend drop failed:', e);
+    }
+    return null;
+  }
+};
+
+export const notificationsApi = {
+  getMyNotifications: async () => {
+    try {
+      const res = await authFetch('/notifications/my');
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend /notifications/my unavailable:', e);
+    }
+    return [];
+  },
+  sendNotification: async ({ patientId, trialId, message, channel = 'IN_APP' }) => {
+    try {
+      const res = await authFetch('/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: patientId, trial_id: trialId, message, channel })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend notification send failed:', e);
+    }
+    return null;
+  },
+  respondNotification: async (notificationId, response) => {
+    try {
+      const res = await authFetch(`/notifications/${notificationId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend respond notification failed:', e);
+    }
+    return null;
   }
 };
 

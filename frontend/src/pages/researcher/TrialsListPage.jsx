@@ -125,73 +125,106 @@ export function TrialsListPage({ setActiveTab, onSelectTrial }) {
       </div>
 
       {/* Trials Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
-        {filteredTrials.map((trial) => {
-          const enrolledCount = enrollments.filter(e => e.trial_id === trial.trial_id && e.status === 'ENROLLED').length;
-          const target = trial.target_recruitment || 1;
-          const progress = Math.min(100, Math.round((enrolledCount / target) * 100));
+      {filteredTrials.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
+          {filteredTrials.map((trial) => {
+            const enrolledCount = enrollments.filter(e => e.trial_id === trial.trial_id && e.status === 'ENROLLED').length;
+            const target = trial.target_recruitment || 1;
+            const progress = Math.min(100, Math.round((enrolledCount / target) * 100));
 
-          return (
-            <div
-              key={trial.trial_id}
-              className="card card-hoverable"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                height: '100%'
-              }}
+            return (
+              <div
+                key={trial.trial_id}
+                className="card card-hoverable"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  height: '100%'
+                }}
+              >
+                <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
+                    <div>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: '#0284c7' }}>
+                        {trial.trial_id}
+                      </span>
+                      <h3 style={{ fontSize: '1.1rem', color: 'var(--slate-900)', marginTop: 2 }}>
+                        {trial.trial_name}
+                      </h3>
+                    </div>
+                    <StatusBadge status={trial.status} size="sm" />
+                  </div>
+
+                  <p style={{ fontSize: '0.82rem', color: 'var(--slate-600)', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {trial.description}
+                  </p>
+
+                  {/* Progress Bar */}
+                  <div style={{ background: 'var(--bg-subtle)', padding: '0.85rem', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600 }}>
+                      <span style={{ color: 'var(--slate-600)' }}>Recruitment</span>
+                      <span style={{ color: 'var(--slate-900)' }}>{enrolledCount} / {trial.target_recruitment} ({progress}%)</span>
+                    </div>
+                    <ProgressBar current={enrolledCount} target={trial.target_recruitment} height={6} />
+                  </div>
+
+                  {/* Criteria snapshot counts */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: 'var(--slate-500)' }}>
+                    <span><strong>{trial.criteria?.length || 0}</strong> Criteria Rules</span>
+                    <span>•</span>
+                    <span>Source: <strong>{trial.source_type || 'MANUAL'}</strong></span>
+                  </div>
+                </div>
+
+                <div className="card-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
+                    Created {formatDate(trial.created_at)}
+                  </span>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => handleOpenTrial(trial.trial_id)}
+                  >
+                    <span>Open Workspace</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          className="card"
+          style={{
+            padding: '3rem 1.5rem',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem'
+          }}
+        >
+          <FlaskConical size={36} color="var(--slate-400)" />
+          <div>
+            <h3 style={{ fontSize: '1.2rem', color: 'var(--slate-800)', fontWeight: 700 }}>
+              {searchTerm ? 'No matching clinical trials found' : 'Your trial portfolio is empty'}
+            </h3>
+            <p style={{ fontSize: '0.86rem', color: 'var(--slate-500)', marginTop: 4 }}>
+              {searchTerm ? 'Try adjusting your search query or status filter.' : 'Launch your first clinical trial protocol using AI criteria extraction.'}
+            </p>
+          </div>
+          {!searchTerm && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setActiveTab('create-trial')}
             >
-              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-                  <div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: '#0284c7' }}>
-                      {trial.trial_id}
-                    </span>
-                    <h3 style={{ fontSize: '1.1rem', color: 'var(--slate-900)', marginTop: 2 }}>
-                      {trial.trial_name}
-                    </h3>
-                  </div>
-                  <StatusBadge status={trial.status} size="sm" />
-                </div>
-
-                <p style={{ fontSize: '0.82rem', color: 'var(--slate-600)', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {trial.description}
-                </p>
-
-                {/* Progress Bar */}
-                <div style={{ background: 'var(--bg-subtle)', padding: '0.85rem', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600 }}>
-                    <span style={{ color: 'var(--slate-600)' }}>Recruitment</span>
-                    <span style={{ color: 'var(--slate-900)' }}>{enrolledCount} / {trial.target_recruitment} ({progress}%)</span>
-                  </div>
-                  <ProgressBar current={enrolledCount} target={trial.target_recruitment} height={6} />
-                </div>
-
-                {/* Criteria snapshot counts */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: 'var(--slate-500)' }}>
-                  <span><strong>{trial.criteria?.length || 0}</strong> Criteria Rules</span>
-                  <span>•</span>
-                  <span>Source: <strong>{trial.source_type || 'MANUAL'}</strong></span>
-                </div>
-              </div>
-
-              <div className="card-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
-                  Created {formatDate(trial.created_at)}
-                </span>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => handleOpenTrial(trial.trial_id)}
-                >
-                  <span>Open Workspace</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              <Sparkles size={16} />
+              <span>Launch AI Trial Builder</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

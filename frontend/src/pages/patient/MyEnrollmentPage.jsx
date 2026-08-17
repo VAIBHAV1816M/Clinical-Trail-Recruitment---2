@@ -16,8 +16,8 @@ import { formatDate } from '../../utils/formatters';
 export function MyEnrollmentPage({ setActiveTab }) {
   const { patients, currentPatientId, enrollments, trials } = useApp();
 
-  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
-  const activeEnrollment = enrollments.find(e => e.patient_id === patient.patient_id && (e.status === 'ENROLLED' || e.status === 'ACCEPTED'));
+  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
+  const activeEnrollment = patient ? enrollments.find(e => e.patient_id === patient.patient_id && (e.status === 'ENROLLED' || e.status === 'ACCEPTED')) : null;
   const trial = activeEnrollment ? trials.find(t => t.trial_id === activeEnrollment.trial_id) : null;
 
   return (

@@ -1,11 +1,26 @@
 import React from 'react';
 import { User, Activity, Heart, Calendar, Phone, MapPin, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatDate } from '../../utils/formatters';
 
 export function PatientProfileViewPage() {
   const { patients, currentPatientId } = useApp();
-  const patient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
+  const { profile } = useAuth();
+
+  const patient = profile || patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
+
+  if (!patient) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--slate-500)' }}>
+          <User size={36} style={{ margin: '0 auto 1rem', color: 'var(--slate-400)' }} />
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--slate-800)', fontWeight: 700 }}>No Patient Profile Found</h3>
+          <p style={{ fontSize: '0.86rem', marginTop: 4 }}>Please log in with a valid clinical participant account.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

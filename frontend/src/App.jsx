@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 
 // Layouts
 import { ResearcherLayout } from './components/layout/ResearcherLayout';
 import { PatientLayout } from './components/layout/PatientLayout';
 
-// Landing / Role Selector
+// Auth & Landing Pages
+import { LoginPage } from './pages/LoginPage';
 import { RoleSelectorPage } from './pages/RoleSelectorPage';
 
 // Researcher Pages
@@ -31,13 +33,24 @@ import { PatientProfileViewPage } from './pages/patient/PatientProfileViewPage';
 import { PatientNotificationsPage } from './pages/patient/PatientNotificationsPage';
 
 function AppContent() {
-  const { currentRole, setCurrentRole, selectedTrialId, setSelectedTrialId } = useApp();
+  const { isAuthenticated, role, user, profile, loading: authLoading } = useAuth();
+  const { currentRole, setCurrentRole, selectedTrialId, setSelectedTrialId, setCurrentPatientId } = useApp();
+
+  // Keep AppContext synced with authenticated role & profile
+  useEffect(() => {
+    if (isAuthenticated && role) {
+      setCurrentRole(role);
+      if (role === 'PATIENT' && profile?.patient_id) {
+        setCurrentPatientId(profile.patient_id);
+      }
+    }
+  }, [isAuthenticated, role, profile, setCurrentRole, setCurrentPatientId]);
 
   // Navigation states
   const [researcherTab, setResearcherTab] = useState('dashboard');
   const [patientTab, setPatientTab] = useState('home');
-  const [selectedPatientIdForProfile, setSelectedPatientIdForProfile] = useState('P014');
-  const [patientSelectedTrialId, setPatientSelectedTrialId] = useState('T001');
+  const [selectedPatientIdForProfile, setSelectedPatientIdForProfile] = useState(null);
+  const [patientSelectedTrialId, setPatientSelectedTrialId] = useState(null);
 
   // Titles map for Researcher Layout
   const titleMap = {
@@ -55,13 +68,45 @@ function AppContent() {
     'audit': 'Institutional Activity & Audit Log'
   };
 
-  // If on Landing / Role Selector
-  if (currentRole === 'ROLE_SELECTOR') {
-    return <RoleSelectorPage onEnter={() => {}} />;
+  // Loading Screen while restoring JWT session
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #075985 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#ffffff',
+          gap: '1rem'
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            border: '3px solid rgba(255, 255, 255, 0.2)',
+            borderTopColor: '#38bdf8',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }}
+        />
+        <div style={{ fontSize: '0.95rem', color: '#cbd5e1', fontWeight: 600 }}>
+          Restoring secure clinical session...
+        </div>
+      </div>
+    );
+  }
+
+  // If Unauthenticated, present Login Page
+  if (!isAuthenticated) {
+    return <LoginPage onBrowseRoles={() => {}} />;
   }
 
   // Researcher Experience
-  if (currentRole === 'RESEARCHER') {
+  if (role === 'RESEARCHER' || currentRole === 'RESEARCHER') {
     return (
       <ResearcherLayout
         activeTab={researcherTab}
@@ -190,8 +235,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </AuthProvider>
   );
 }

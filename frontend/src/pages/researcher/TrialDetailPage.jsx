@@ -76,6 +76,42 @@ export function TrialDetailPage({ setActiveTab }) {
   const [dropReason, setDropReason] = useState('');
 
   const trial = trials.find(t => t.trial_id === selectedTrialId) || trials[0];
+
+  if (!trial) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div
+          className="card"
+          style={{
+            padding: '3.5rem 2rem',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem'
+          }}
+        >
+          <FlaskConical size={36} color="var(--slate-400)" />
+          <h3 style={{ fontSize: '1.25rem', color: 'var(--slate-800)', fontWeight: 700 }}>
+            No Clinical Trial Selected
+          </h3>
+          <p style={{ fontSize: '0.88rem', color: 'var(--slate-500)', maxWidth: 460 }}>
+            Please select an existing trial from your portfolio or create a new study protocol to view its operational workspace.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn btn-secondary" onClick={() => setActiveTab('trials-list')}>
+              View Trials Portfolio
+            </button>
+            <button className="btn btn-primary" onClick={() => setActiveTab('create-trial')}>
+              <Sparkles size={15} />
+              <span>Create New Trial</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const stats = getDashboardStats(trial.trial_id);
   const candidates = getCandidatesForTrial(trial.trial_id);
 

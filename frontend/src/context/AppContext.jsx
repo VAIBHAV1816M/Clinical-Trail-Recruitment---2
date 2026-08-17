@@ -1,74 +1,117 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  INITIAL_TRIALS,
-  INITIAL_PATIENTS,
-  INITIAL_SCREENINGS,
-  INITIAL_VERIFICATIONS,
-  INITIAL_ENROLLMENTS,
-  INITIAL_WAITLIST,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_AUDIT_LOGS
-} from '../data/mockDatabase';
+import { useAuth } from './AuthContext';
 import { runMatchingEngine, computeGaps } from '../services/api/matchingEngine';
-import { trialsApi, patientsApi, matchingApi } from '../services/api';
+import { trialsApi, patientsApi, matchingApi, enrollmentsApi, notificationsApi } from '../services/api';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  // Database States
-  const [trials, setTrials] = useState(INITIAL_TRIALS);
-  const [patients, setPatients] = useState(INITIAL_PATIENTS);
-  const [screenings, setScreenings] = useState(INITIAL_SCREENINGS);
-  const [verifications, setVerifications] = useState(INITIAL_VERIFICATIONS);
-  const [enrollments, setEnrollments] = useState(INITIAL_ENROLLMENTS);
-  const [waitlists, setWaitlists] = useState(INITIAL_WAITLIST);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
+  const { isAuthenticated, role, user, profile } = useAuth();
+
+  // Database States (Clean by default for strict data isolation)
+  const [trials, setTrials] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [screenings, setScreenings] = useState([]);
+  const [verifications, setVerifications] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [waitlists, setWaitlists] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   // App Session / Persona States
-  const [currentRole, setCurrentRole] = useState('RESEARCHER'); // 'RESEARCHER' | 'PATIENT'
-  const [selectedTrialId, setSelectedTrialId] = useState('T001');
-  const [currentPatientId, setCurrentPatientId] = useState('P014'); // Jane Doe
-  const [clinicianName] = useState('Dr. Rachel Miller, MD');
+  const [currentRole, setCurrentRole] = useState(role || 'RESEARCHER');
+  const [selectedTrialId, setSelectedTrialId] = useState(null);
+  const [currentPatientId, setCurrentPatientId] = useState(null);
+  const [clinicianName, setClinicianName] = useState('Principal Investigator');
   
   // UI Toasts
   const [toasts, setToasts] = useState([]);
 
-  // Sync with FastAPI backend on initial mount
+  // Sync with FastAPI backend whenever auth state or role changes
   useEffect(() => {
     let isMounted = true;
-    async function loadBackendData() {
+    if (!isAuthenticated) {
+      setTrials([]);
+      setPatients([]);
+      setEnrollments([]);
+      setNotifications([]);
+      setSelectedTrialId(null);
+      setCurrentPatientId(null);
+      return;
+    }
+
+    async function loadUserData() {
       try {
-        const [backendTrials, backendPatients] = await Promise.all([
-          trialsApi.getTrials(),
-          patientsApi.getPatients()
-        ]);
-        if (isMounted) {
-          if (Array.isArray(backendTrials) && backendTrials.length > 0) {
-            setTrials(prev => {
-              const existingIds = new Set(backendTrials.map(t => t.trial_id));
-              const extras = prev.filter(t => !existingIds.has(t.trial_id));
-              return [...backendTrials, ...extras];
-            });
-            if (backendTrials[0]?.trial_id) {
-              setSelectedTrialId(backendTrials[0].trial_id);
+        if (role === 'RESEARCHER') {
+          setCurrentRole('RESEARCHER');
+          if (profile?.name) setClinicianName(profile.name);
+
+          // Fetch only researcher's owned trials from /trials/my
+          const [myTrials, backendPatients] = await Promise.all([
+            trialsApi.getMyTrials(),
+            patientsApi.getPatients()
+          ]);
+
+          if (isMounted) {
+            const safeTrials = Array.isArray(myTrials) ? myTrials : [];
+            setTrials(safeTrials);
+            if (safeTrials.length > 0) {
+              setSelectedTrialId(safeTrials[0].trial_id);
+            } else {
+              setSelectedTrialId(null);
             }
+            setPatients(Array.isArray(backendPatients) ? backendPatients : []);
+            setEnrollments([]);
+            setNotifications([]);
           }
-          if (Array.isArray(backendPatients) && backendPatients.length > 0) {
-            setPatients(prev => {
-              const existingIds = new Set(backendPatients.map(p => p.patient_id));
-              const extras = prev.filter(p => !existingIds.has(p.patient_id));
-              return [...backendPatients, ...extras];
-            });
+        } else if (role === 'PATIENT') {
+          setCurrentRole('PATIENT');
+          
+          // Fetch authenticated patient's profile, open trials, enrollments, and notifications
+          const [myProfile, openTrials, myEnrollments, myNotifs] = await Promise.all([
+            patientsApi.getMyPatientProfile(),
+            trialsApi.getTrials(),
+            enrollmentsApi.getMyEnrollments(),
+            notificationsApi.getMyNotifications()
+          ]);
+
+          if (isMounted) {
+            if (myProfile && myProfile.patient_id) {
+              setPatients([myProfile]);
+              setCurrentPatientId(myProfile.patient_id);
+            } else if (profile?.patient_id) {
+              setCurrentPatientId(profile.patient_id);
+              setPatients([{
+                patient_id: profile.patient_id,
+                name: profile.name || user?.email?.split('@')[0] || 'Patient',
+                gender: profile.gender || 'Not specified',
+                dob: profile.dob || '',
+                location: profile.location || '',
+                phone: profile.phone || '',
+                blood_group: profile.blood_group || '',
+                consent: true,
+                vitals: [],
+                conditions: [],
+                allergies: []
+              }]);
+            } else {
+              setPatients([]);
+              setCurrentPatientId(null);
+            }
+
+            setTrials(Array.isArray(openTrials) ? openTrials : []);
+            setEnrollments(Array.isArray(myEnrollments) ? myEnrollments : []);
+            setNotifications(Array.isArray(myNotifs) ? myNotifs : []);
           }
         }
       } catch (err) {
-        console.warn('Backend sync failed, continuing with initial cache:', err);
+        console.warn('Backend data sync failed:', err);
       }
     }
-    loadBackendData();
+
+    loadUserData();
     return () => { isMounted = false; };
-  }, []);
+  }, [isAuthenticated, role, user, profile]);
 
   const showToast = (title, message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -102,7 +145,20 @@ export function AppProvider({ children }) {
   // Trial Operations
   // ==========================================
 
-  const createTrial = (trialData, criteriaList) => {
+  const createTrial = async (trialData, criteriaList) => {
+    try {
+      const created = await trialsApi.createManualTrial(trialData, criteriaList);
+      if (created && created.trial_id) {
+        setTrials(prev => [created, ...prev]);
+        setSelectedTrialId(created.trial_id);
+        logAudit('CREATE_TRIAL', 'Trial', created.trial_id, null, 'OPEN', 'Created new clinical trial protocol with AI criteria');
+        showToast('Trial Created', `Trial ${created.trial_id} (${created.trial_name}) has been launched.`, 'success');
+        return created;
+      }
+    } catch (e) {
+      console.warn('Backend createManualTrial error:', e);
+    }
+
     const nextNum = trials.length + 1;
     const trial_id = `T${String(nextNum).padStart(3, '0')}`;
     

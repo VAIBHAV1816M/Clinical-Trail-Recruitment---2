@@ -7,7 +7,30 @@ export function ReportsPage() {
   const { trials, getCandidatesForTrial, showToast } = useApp();
   const [selectedTrialId, setSelectedTrialId] = useState('T001');
 
-  const trial = trials.find(t => t.trial_id === selectedTrialId) || trials[0];
+  const trial = trials.find(t => t.trial_id === selectedTrialId) || trials[0] || null;
+
+  if (!trial) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--slate-900)' }}>
+            Reports & Institutional Exports
+          </h2>
+          <p style={{ fontSize: '0.86rem', color: 'var(--slate-500)' }}>
+            Download validated candidate rosters and executive trial recruitment reports.
+          </p>
+        </div>
+        <div className="card" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+          <FileSpreadsheet size={36} color="var(--slate-400)" style={{ margin: '0 auto 1rem' }} />
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--slate-800)', fontWeight: 700 }}>No Trials to Export</h3>
+          <p style={{ fontSize: '0.86rem', color: 'var(--slate-500)', marginTop: 4 }}>
+            Create or manage a clinical trial in your portfolio to generate downloadable CSV candidate rosters and executive PDF summaries.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const candidates = getCandidatesForTrial(trial.trial_id);
 
   const handleDownloadPdf = () => {

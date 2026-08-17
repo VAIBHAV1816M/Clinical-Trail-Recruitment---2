@@ -10,9 +10,11 @@ import {
   ArrowRightLeft,
   ChevronDown,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 export function PatientNavbar({ activeTab, setActiveTab }) {
   const {
@@ -25,14 +27,23 @@ export function PatientNavbar({ activeTab, setActiveTab }) {
     showToast
   } = useApp();
 
+  const { user, profile, logout } = useAuth();
+
   const [isPersonaOpen, setIsPersonaOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const activePatient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
+  const activePatient = profile || patients.find(p => p.patient_id === currentPatientId) || patients[0] || null;
+  const patientDisplayName = profile?.name || activePatient?.name || user?.email?.split('@')[0] || 'Participant';
+  const patientDisplayId = profile?.patient_id || activePatient?.patient_id || '';
   
   // Pending invitations count for this patient
   const pendingInvites = enrollments.filter(e => e.patient_id === currentPatientId && e.status === 'INVITED').length;
   const unreadNotifs = notifications.filter(n => n.patient_id === currentPatientId && n.response === 'NONE').length;
+
+  const handleLogout = () => {
+    logout();
+    showToast('Signed Out', 'You have been signed out of the patient portal.', 'info');
+  };
 
   const navLinks = [
     { id: 'home', label: 'Home', icon: Home },
@@ -110,7 +121,7 @@ export function PatientNavbar({ activeTab, setActiveTab }) {
 
       {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* Persona Dropdown */}
+        {/* Patient Profile Dropdown */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setIsPersonaOpen(!isPersonaOpen)}
@@ -139,14 +150,14 @@ export function PatientNavbar({ activeTab, setActiveTab }) {
                 fontSize: '0.75rem'
               }}
             >
-              {activePatient?.name?.charAt(0) || 'P'}
+              {patientDisplayName.charAt(0)}
             </div>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#166534' }}>
-                {activePatient?.name}
+                {patientDisplayName}
               </div>
               <div style={{ fontSize: '0.68rem', color: '#15803d' }}>
-                ID: {activePatient?.patient_id}
+                ID: {patientDisplayId}
               </div>
             </div>
             <ChevronDown size={14} color="#166534" />
@@ -158,7 +169,7 @@ export function PatientNavbar({ activeTab, setActiveTab }) {
                 position: 'absolute',
                 top: '115%',
                 right: 0,
-                width: 280,
+                width: 260,
                 background: '#ffffff',
                 borderRadius: 'var(--radius-xl)',
                 border: '1px solid var(--border-subtle)',
@@ -170,81 +181,46 @@ export function PatientNavbar({ activeTab, setActiveTab }) {
                 gap: '0.4rem'
               }}
             >
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--slate-400)', textTransform: 'uppercase', padding: '0.2rem 0.5rem' }}>
-                Switch Patient Profile
+              <div style={{ padding: '0.25rem 0.5rem' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--slate-900)' }}>
+                  {patientDisplayName}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
+                  {user?.email || 'patient@example.com'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: 2, fontWeight: 600 }}>
+                  Participant ID: {patientDisplayId}
+                </div>
               </div>
-              {patients.slice(0, 5).map(p => (
-                <div
-                  key={p.patient_id}
-                  onClick={() => {
-                    setCurrentPatientId(p.patient_id);
-                    setIsPersonaOpen(false);
-                    showToast('Switched Persona', `Active patient profile changed to ${p.name}.`, 'info');
-                  }}
+
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.4rem' }}>
+                <button
+                  onClick={handleLogout}
                   style={{
-                    padding: '0.55rem 0.75rem',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    background: p.patient_id === currentPatientId ? '#f0fdf4' : 'transparent',
-                    border: `1px solid ${p.patient_id === currentPatientId ? '#bbf7d0' : 'transparent'}`,
+                    width: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    gap: '0.5rem',
+                    padding: '0.55rem 0.65rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: 'none',
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    fontWeight: 600,
+                    fontSize: '0.84rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
                 >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.84rem', color: 'var(--slate-900)' }}>
-                      {p.name}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--slate-500)' }}>
-                      {p.gender} • {p.blood_group} • ID: {p.patient_id}
-                    </div>
-                  </div>
-                  {p.patient_id === currentPatientId && (
-                    <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 700 }}>Active</span>
-                  )}
-                </div>
-              ))}
-
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setCurrentRole('RESEARCHER');
-                    setIsPersonaOpen(false);
-                    showToast('Role Switched', 'Switched to Clinician / Researcher workspace.', 'info');
-                  }}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
-                >
-                  <ArrowRightLeft size={14} />
-                  <span>Switch to Researcher Workspace</span>
+                  <LogOut size={16} />
+                  <span>Log Out of Patient Portal</span>
                 </button>
               </div>
             </div>
           )}
         </div>
-
-        {/* Switch to Researcher Quick Button */}
-        <button
-          className="btn btn-secondary btn-sm"
-          onClick={() => {
-            setCurrentRole('RESEARCHER');
-            showToast('Role Switched', 'Switched to Researcher Workspace.', 'info');
-          }}
-          style={{ display: 'none', md: 'flex' }}
-        >
-          <ArrowRightLeft size={14} />
-          <span>Researcher View</span>
-        </button>
-
-        {/* Mobile menu toggle */}
-        <button
-          className="btn-ghost"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          style={{ display: 'inline-flex', padding: '0.4rem' }}
-        >
-          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
       </div>
 
       {/* Mobile Drawer Menu */}

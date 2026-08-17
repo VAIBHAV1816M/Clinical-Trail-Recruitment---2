@@ -16,8 +16,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
+import { useAuth } from '../../context/AuthContext';
+
 export function ResearcherSidebar({ activeTab, setActiveTab, isOpen, onClose }) {
   const { trials, notifications, clinicianName, screenings } = useApp();
+  const { profile, user, logout } = useAuth();
+
+  const researcherDisplayName = profile?.name || clinicianName || user?.email?.split('@')[0];
+  const researcherOrg = profile?.organization || 'Clinical Research Institute';
 
   const unreviewedCount = screenings.filter(s => s.verdict === 'NEEDS_REVIEW').length;
   const pendingNotifsCount = notifications.filter(n => n.delivery_status === 'PENDING' || n.response === 'NONE').length;
@@ -152,10 +158,10 @@ export function ResearcherSidebar({ activeTab, setActiveTab, isOpen, onClose }) 
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {clinicianName}
+                {researcherDisplayName}
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--slate-400)' }}>
-                Lead Principal Investigator
+              <div style={{ fontSize: '0.68rem', color: 'var(--slate-400)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                {researcherOrg}
               </div>
             </div>
           </div>

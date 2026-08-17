@@ -1,5 +1,9 @@
 from backend.database.connection import Base
 
+# Authentication and Identity entities
+from backend.models.user import User
+from backend.models.researcher import Researcher
+
 # Core entities
 from backend.models.patient import Patient, PatientVitals, PatientCondition, PatientAllergy
 from backend.models.trial import Trial
@@ -15,6 +19,8 @@ from backend.models.audit_log import AuditLog
 
 __all__ = [
     "Base",
+    "User",
+    "Researcher",
     "Patient",
     "PatientVitals",
     "PatientCondition",

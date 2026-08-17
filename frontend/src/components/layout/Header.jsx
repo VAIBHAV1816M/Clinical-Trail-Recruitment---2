@@ -8,9 +8,11 @@ import {
   Bell,
   Sparkles,
   ShieldCheck,
-  Check
+  Check,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 export function Header({ onToggleSidebar, activeTabTitle = 'Overview' }) {
   const {
@@ -22,21 +24,23 @@ export function Header({ onToggleSidebar, activeTabTitle = 'Overview' }) {
     patients,
     currentPatientId,
     setCurrentPatientId,
-    notifications,
     showToast
   } = useApp();
 
+  const { user, profile, logout } = useAuth();
+
   const [isTrialMenuOpen, setIsTrialMenuOpen] = useState(false);
-  const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const selectedTrial = trials.find(t => t.trial_id === selectedTrialId) || trials[0];
-  const activePatient = patients.find(p => p.patient_id === currentPatientId) || patients[0];
+  const selectedTrial = trials.find(t => t.trial_id === selectedTrialId) || trials[0] || null;
 
-  const handleRoleSwitch = (newRole) => {
-    setCurrentRole(newRole);
-    setIsPersonaMenuOpen(false);
-    showToast('Role Switched', `Active view switched to ${newRole === 'RESEARCHER' ? 'Researcher Workspace' : 'Patient Experience'}.`, 'info');
+  const handleLogout = () => {
+    logout();
+    showToast('Signed Out', 'You have been safely signed out.', 'info');
   };
+
+  const displayName = profile?.name || user?.email?.split('@')[0] || 'Investigator';
+  const displayOrg = profile?.organization || user?.email || 'Clinical Investigator';
 
   return (
     <header className="top-header">
@@ -75,7 +79,7 @@ export function Header({ onToggleSidebar, activeTabTitle = 'Overview' }) {
             >
               <FlaskConical size={14} color="#0284c7" />
               <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {selectedTrial?.trial_id}: {selectedTrial?.trial_name}
+                {selectedTrial ? `${selectedTrial.trial_id}: ${selectedTrial.trial_name}` : 'No Active Trials'}
               </span>
               <ChevronDown size={14} />
             </button>
@@ -137,26 +141,57 @@ export function Header({ onToggleSidebar, activeTabTitle = 'Overview' }) {
         </div>
       </div>
 
-      {/* Right Actions & Persona Switcher */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* Role & Persona Switcher Trigger */}
+      {/* Right Actions & Authenticated User Control */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        {/* User Badge & Dropdown */}
         <div style={{ position: 'relative' }}>
           <button
-            className="role-switcher-badge"
-            onClick={() => setIsPersonaMenuOpen(!isPersonaMenuOpen)}
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              padding: '0.35rem 0.75rem',
+              borderRadius: 'var(--radius-full)',
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              cursor: 'pointer'
+            }}
           >
-            <ArrowRightLeft size={14} />
-            <span>Workspace: <strong>{currentRole}</strong></span>
-            <ChevronDown size={12} />
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: '#0284c7',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '0.78rem'
+              }}
+            >
+              {displayName.charAt(0)}
+            </div>
+            <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0369a1' }}>
+                {displayName}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: '#0284c7' }}>
+                Principal Investigator
+              </div>
+            </div>
+            <ChevronDown size={14} color="#0284c7" />
           </button>
 
-          {isPersonaMenuOpen && (
+          {isUserMenuOpen && (
             <div
               style={{
                 position: 'absolute',
                 top: '115%',
                 right: 0,
-                width: 300,
+                width: 260,
                 background: '#ffffff',
                 borderRadius: 'var(--radius-xl)',
                 border: '1px solid var(--border-subtle)',
@@ -168,93 +203,42 @@ export function Header({ onToggleSidebar, activeTabTitle = 'Overview' }) {
                 gap: '0.5rem'
               }}
             >
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--slate-400)', textTransform: 'uppercase', padding: '0.2rem 0.5rem' }}>
-                Switch User Experience
-              </div>
-
-              <div
-                onClick={() => handleRoleSwitch('RESEARCHER')}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius-md)',
-                  background: currentRole === 'RESEARCHER' ? 'var(--primary-50)' : 'var(--bg-subtle)',
-                  border: `1px solid ${currentRole === 'RESEARCHER' ? 'var(--primary-200)' : 'transparent'}`,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem'
-                }}
-              >
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ShieldCheck size={16} />
+              <div style={{ padding: '0.25rem 0.5rem' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--slate-900)' }}>
+                  {displayName}
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--slate-900)' }}>
-                    Researcher Workspace
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
-                    Full PI operations, AI criteria, screening & enrollment
-                  </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
+                  {user?.email}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#0284c7', marginTop: 2 }}>
+                  {displayOrg}
                 </div>
               </div>
 
-              <div
-                onClick={() => handleRoleSwitch('PATIENT')}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius-md)',
-                  background: currentRole === 'PATIENT' ? '#f0fdf4' : 'var(--bg-subtle)',
-                  border: `1px solid ${currentRole === 'PATIENT' ? '#bbf7d0' : 'transparent'}`,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem'
-                }}
-              >
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#059669', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={16} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--slate-900)' }}>
-                    Patient Portal
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
-                    View recommendations, accept invitations & track status
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--slate-400)', textTransform: 'uppercase', padding: '0.2rem 0.5rem' }}>
-                  Select Demo Patient Persona
-                </div>
-                {patients.slice(0, 4).map(p => (
-                  <div
-                    key={p.patient_id}
-                    onClick={() => {
-                      setCurrentPatientId(p.patient_id);
-                      if (currentRole !== 'PATIENT') {
-                        setCurrentRole('PATIENT');
-                      }
-                      setIsPersonaMenuOpen(false);
-                      showToast('Persona Changed', `Logged in as patient ${p.name} (${p.patient_id}).`, 'info');
-                    }}
-                    style={{
-                      padding: '0.45rem 0.6rem',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: p.patient_id === currentPatientId ? 'var(--primary-50)' : 'transparent',
-                      color: p.patient_id === currentPatientId ? 'var(--primary-700)' : 'var(--slate-700)'
-                    }}
-                  >
-                    <span>{p.name} ({p.patient_id})</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--slate-500)' }}>{p.gender}</span>
-                  </div>
-                ))}
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.4rem' }}>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.55rem 0.65rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: 'none',
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    fontWeight: 600,
+                    fontSize: '0.84rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
+                >
+                  <LogOut size={16} />
+                  <span>Log Out of Workspace</span>
+                </button>
               </div>
             </div>
           )}

@@ -162,6 +162,13 @@ export function ScreeningLogPage() {
                   </tr>
                 );
               })}
+              {filteredScreenings.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--slate-500)' }}>
+                    No official screening evaluations recorded yet. Run screenings from the candidate discovery pool to generate verification logs.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

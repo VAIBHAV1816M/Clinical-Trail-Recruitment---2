@@ -112,6 +112,13 @@ export function NotificationsPage() {
                   </tr>
                 );
               })}
+              {notifications.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--slate-500)' }}>
+                    No communications or alerts recorded yet. Click Dispatch Notification to send study alerts to candidates.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -32,8 +32,26 @@ export function PatientProfilePage({ patientId, onBack, onSelectTrial }) {
 
   const [selectedTrialForModal, setSelectedTrialForModal] = useState(null);
 
-  const patient = patients.find(p => p.patient_id === patientId) || patients[0];
-  const eligibleTrials = getTrialsForPatient(patient.patient_id);
+  const patient = patients.find(p => p.patient_id === patientId) || patients[0] || null;
+  const eligibleTrials = patient ? getTrialsForPatient(patient.patient_id) : [];
+
+  if (!patient) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {onBack && (
+          <button className="btn btn-ghost btn-sm" onClick={onBack} style={{ width: 'fit-content' }}>
+            <ArrowLeft size={16} />
+            <span>Back to Registry</span>
+          </button>
+        )}
+        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--slate-500)' }}>
+          <User size={36} style={{ margin: '0 auto 1rem', color: 'var(--slate-400)' }} />
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--slate-800)', fontWeight: 700 }}>Patient Record Not Found</h3>
+          <p style={{ fontSize: '0.86rem', marginTop: 4 }}>The selected patient record does not exist in the active clinical registry.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
