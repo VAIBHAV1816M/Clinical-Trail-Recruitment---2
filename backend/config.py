@@ -1,4 +1,7 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -7,7 +10,11 @@ class Settings(BaseSettings):
     UPLOAD_DIRECTORY: str = "./uploads"
     ENVIRONMENT: str = "development"
 
-    # This tells Pydantic to read from the .env file in your backend folder
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Read directly from backend/.env
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
-settings = Settings()
+settings = Settings()

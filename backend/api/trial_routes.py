@@ -11,6 +11,10 @@ from backend.utils.audit import create_audit_log
 
 router = APIRouter(prefix="/trials", tags=["Trials"])
 
+@router.get("/", response_model=List[TrialResponse])
+def get_all_trials(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return db.query(Trial).offset(skip).limit(limit).all()
+
 @router.post("/", response_model=TrialResponse)
 def create_manual_trial(trial_data: TrialCreate, criteria: List[CriterionCreate], db: Session = Depends(get_db)):
     return confirm_criteria(db, trial_data, criteria)

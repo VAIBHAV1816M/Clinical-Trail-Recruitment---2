@@ -3,12 +3,16 @@ from sqlalchemy.orm import Session
 from typing import List
 from backend.database.session import get_db
 from backend.schemas.patient_schema import PatientCreate, PatientUpdate, PatientResponse, BatchUploadResponse
-from backend.services.patient_service import create_patient
+from backend.services.patient_service import create_patient, list_patients
 from backend.services.batch_upload_service import process_batch_upload
 from backend.models.patient import Patient
 from backend.utils.audit import create_audit_log
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
+
+@router.get("/", response_model=List[PatientResponse])
+def get_all_patients(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return list_patients(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=PatientResponse)
 def register_patient(patient: PatientCreate, force: bool = False, db: Session = Depends(get_db)):
